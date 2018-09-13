@@ -1,0 +1,504 @@
+#!/usr/local/bin/python3.5m
+import time
+import pygame
+import random
+import ast
+from operator import itemgetter
+
+FPS = 60 #frames per second setting
+
+fpsClock = pygame.time.Clock()
+
+pygame.init()
+
+playername = input("What your name dawg? ")
+
+maxscore = 7
+
+pause = False
+
+"""colors"""
+black = (0, 0, 0)
+BLACK = (0, 0, 0)
+white = (255, 255, 255)
+WHITE = (255, 255, 255)
+greyLight = (220, 220, 220)
+greyDark = (50, 50, 50)
+grey = (125, 125, 125)
+red = (200, 0 , 0)
+green = (0, 200, 0)
+blue = (0, 0, 200)
+redLight = (255, 0, 0)
+greenLight = (0, 255, 0)
+blueLight = (0, 0, 255)
+yellowLight = (250, 250, 150)
+yellow = (200, 200, 100)
+orange = (255, 150, 0)
+orangeLight = (255, 165, 0)
+purple = (160, 80, 235)
+purpleLight = (180, 100, 255)
+
+#Base texts
+largeText = pygame.font.Font('freesansbold.ttf',150)
+medText = pygame.font.Font('freesansbold.ttf',80)
+smallText = pygame.font.Font('freesansbold.ttf', 35)
+
+"""screen dimensions"""
+SCREEN_WIDTH = 1000
+SCREEN_HEIGHT = 800
+
+HALF_SCREEN_WIDTH = int(SCREEN_WIDTH / 2)
+HALF_SCREEN_HEIGHT = int(SCREEN_HEIGHT / 2)
+
+
+"""screen details"""
+size = [SCREEN_WIDTH, SCREEN_HEIGHT]
+screen = pygame.display.set_mode(size)
+pygame.display.set_caption("Stayt")
+
+
+"""player sprites and locations"""
+gas_sprite = pygame.image.load('gas_sprite.png')
+solid_sprite = pygame.image.load('solid_sprite.png')
+liquid_sprite = pygame.image.load('liquid_sprite.png')
+
+#location of sprite (middle of screen as of now)
+playerx = HALF_SCREEN_WIDTH
+playery = HALF_SCREEN_HEIGHT
+
+#current_state = solid_sprite
+
+player = solid_sprite
+
+player_faceleft = pygame.transform.flip(player, True, False) #flips the sprite to face left
+player_faceright = pygame.transform.flip(player_faceleft, True, False) #flips the sprite to face right
+
+
+"""READ AND WRITE"""
+def reed(filename):
+    file = open(filename, "r")
+    highscores = {}
+    for line in file:
+        name, score = line.strip().split(':')
+        highscores[name] = score
+        
+    return highscores
+    
+def listeth(filename):
+    names = []
+    scores = []
+    file = open(filename,"r")
+    for line in file:
+        splip = line.strip().split(':')
+        names.append(splip[0])
+        scores.append(int(splip[1]))
+    
+
+def rite(filename, riteystuff):
+    file = open(filename,"w")
+    return file.write(riteystuff)
+    file.close()
+    
+    
+def append(filename, appendystuff):
+    file = open(filename, "a")
+    file.write(appendystuff)
+    file.close()
+
+
+"""text functions"""
+def text_objects(text, font, color) :
+    textSurface = font.render(text, True, color)
+    return textSurface, textSurface.get_rect()
+
+
+def textoid(msg, x, y, textcolor, size):
+    TextSurf, TextRect = text_objects(msg, pygame.font.Font('freesansbold.ttf', size), textcolor)
+    TextRect.center = (x, y)
+    screen.blit(TextSurf, TextRect)
+    
+    
+"""clear function"""
+def clear(color):
+    pygame.draw.rect(screen, whitem,(0,0,1000,1000))
+    
+"""button function"""
+def button(msg, x, y, w, h, inactivecolor, activecolor, textcolor, action=None):
+    mouse = pygame.mouse.get_pos()
+    click = pygame.mouse.get_pressed()
+    #print(click)
+    
+    if x+w > mouse[0] > x and y+h > mouse[1] > y:
+        pygame.draw.rect(screen, activecolor,(x,y,w,h))
+        
+        if click[0] == 1 and action != None:
+            action()
+            
+    else:
+        pygame.draw.rect(screen, inactivecolor,(x,y,w,h))
+        
+    TextSurf, TextRect = text_objects(msg, smallText, textcolor)
+    TextRect.center = ((x + (w/2)), (y+ (h/2)))
+    screen.blit(TextSurf, TextRect)
+
+"""render player"""
+def render_player(X, Y) : #,state)
+    screen.blit(player, (playerx, playery))
+    
+    
+"""movement options"""
+pressed_right = False
+pressed_left = False
+pressed_down = False
+pressed_up = False
+
+def go_right() :
+    #moves player right
+    global playerx
+    playerx += 15
+
+def go_left() :
+    #moves player left
+    global playerx
+    playerx -= 15 #speed at which the player moves
+
+def go_up() :
+    #moves player up
+    global playery
+    playery -= 15 #speed at which the player moves
+
+def go_down() :
+    #moves player up
+    global playery
+    playery += 15 #speed at which the player moves
+
+def game_intro() :
+    
+    intro = True
+    
+    while intro:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+                
+        screen.fill(white)
+        textoid('Stayt', SCREEN_WIDTH/4, SCREEN_HEIGHT/4, black, 150)
+        
+        mouse = pygame.mouse.get_pos()
+       
+        button('Play game!', 75, 300, 300, 50, green, greenLight, greyLight, main) 
+        button('Tutorial', 75, 375, 300, 50, blue, blueLight, greyLight, tutorial)
+        button('High scores', 75, 450, 300, 50, red, redLight, greyLight, high_scores)
+        button('Quit', 75, 525, 300, 50, purple, purpleLight, greyLight, quitgame)
+        
+        pygame.display.update()
+        
+
+"""key presses"""
+def pressed_keys(pygame) :
+    #which global variables the function is referencing
+    global player
+    global playerx
+    global playery
+    global current_state
+    global player_faceleft
+    global player_faceright
+    
+    global pressed_right
+    global pressed_left
+    global pressed_down
+    global pressed_up
+    global pause
+    
+    for event in pygame.event.get():
+        #when a button is pressed
+        if event.type == pygame.KEYDOWN:
+            #moving left
+            if event.key == pygame.K_LEFT:
+                print('you hit left')
+                pressed_left = True
+                player = player_faceleft
+                #go_left()
+            #moving right
+            if event.key == pygame.K_RIGHT:
+                print ('you hit right')
+                pressed_right = True
+                player = player_faceright
+                #go_right()
+            #moving up/jumping
+            if event.key == pygame.K_UP:
+                print('you hit up')
+                pressed_up = True
+                #go_up()
+            #moving down (will turn into fastfall)
+            if event.key == pygame.K_DOWN:
+                print('you hit down')
+                pressed_down = True
+                #go_down()
+            #changing state to solid
+            if event.key == pygame.K_a:
+                print('You changed to Solid')
+                player = solid_sprite
+                player_faceleft = pygame.transform.flip(player, True, False) #flips the sprite to face left
+                player_faceright = pygame.transform.flip(player_faceleft, True, False) #flips the sprite to face right
+            #changing state to gas
+            if event.key == pygame.K_s:
+                print('You changed to Gas')
+                player = gas_sprite
+                player_faceleft = pygame.transform.flip(player, True, False) #flips the sprite to face left
+                player_faceright = pygame.transform.flip(player_faceleft, True, False) #flips the sprite to face right
+            #changing state liquid
+            if event.key == pygame.K_d:
+                print('You changed to Liquid')
+                player = liquid_sprite
+                player_faceleft = pygame.transform.flip(player, True, False) #flips the sprite to face left
+                player_faceright = pygame.transform.flip(player_faceleft, True, False) #flips the sprite to face right
+            
+            #pausing
+            if event.key == pygame.K_p:
+                print('You have a heccin pause')
+                pause = True
+                paused()
+            
+            #closing game
+            if event.key == pygame.K_ESCAPE:
+                    print('You hit escape')
+                    print('That quits the game')
+                    quit()
+        
+        #when a button isnt pressed            
+        if event.type == pygame.KEYUP:
+            if event.key == pygame.K_LEFT:
+                pressed_left = False
+            if event.key == pygame.K_RIGHT:
+                pressed_right = False
+            if event.key == pygame.K_UP:
+                pressed_up = False
+            if event.key == pygame.K_DOWN:
+                pressed_down = False
+
+
+"""High score"""
+def high_scores():
+    
+    global playername
+    global maxscore
+    
+    highscoreths = True
+    
+    highscores = reed('HIGHSCORES.txt')
+        
+    scores = []
+    
+    print(highscores)
+    for i in highscores.keys():
+        temp = []
+        temp.append(int(highscores[i]))
+        temp.append(i)
+        scores.append(temp)
+        
+    scores.sort(key=lambda x:x[0])
+    scores.reverse()
+    print(scores)
+        
+    Robbie = scores[0][1]
+    Name2 = scores[1][1]
+    Name3 = scores[2][1]
+
+    Rotten = scores[0][0]
+    Score2 = scores[1][0]
+    Score3 = scores[2][0]
+    
+    if maxscore > scores[0][0]:
+        rite('HIGHSCORES.txt', str(playername) + ':' + str(maxscore) + '\n')
+        append('HIGHSCORES.txt', str(Robbie) + ':' + str(Rotten) + '\n')
+        append('HIGHSCORES.txt', str(Name2) + ':' + str(Rotten))
+        
+    elif maxscore > scores[1][0] and maxscore < scores[0][0]:
+        rite('HIGHSCORES.txt', str(Robbie) + ':' + str(Rotten) + '\n')
+        append('HIGHSCORES.txt', str(playername) + ':' + str(maxscore) + '\n')
+        append('HIGHSCORES.txt', str(Name2) + ':' + str(Rotten))
+        
+    elif maxscore > scores[2][0] and maxscore < scores[1][0]:
+        rite('HIGHSCORES.txt', str(playername) + ':' + str(maxscore) + '\n')
+        append('HIGHSCORES.txt', str(Name2) + ':' + str(Rotten) + '\n')
+        append('HIGHSCORES.txt', str(Robbie) + ':' + str(Rotten))
+            
+            
+    while highscoreths:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+                
+        screen.fill(white)
+        
+        #title
+        textoid('Scores', SCREEN_WIDTH/2, SCREEN_HEIGHT/5, red, 150)
+        
+        #3 top highcores
+        
+        
+        #counter = 100
+        #for names in highscores.keys():
+            #textoid(names, int(SCREEN_WIDTH/2 - 200), int(SCREEN_HEIGHT/3.5 + counter), black, 40)
+            #textoid('-', int(SCREEN_WIDTH/2), int(SCREEN_HEIGHT/3.5 + counter), black, 40)
+            #counter = counter + 100
+            
+        #counter = 100
+        #for scores in highscores.values():
+            #textoid(scores, int(SCREEN_WIDTH/2 + 200), int(SCREEN_HEIGHT/3.5 + counter), black, 40)
+            #counter = counter + 100  
+            
+            
+        textoid(str(scores[0][1]), int(SCREEN_WIDTH/2 - 200), int(SCREEN_HEIGHT/3.5 + 100), black, 40)
+        textoid('-', int(SCREEN_WIDTH/2), int(SCREEN_HEIGHT/3.5 + 100), black, 80)
+        textoid(str(scores[0][0]), int(SCREEN_WIDTH/2 + 200), int(SCREEN_HEIGHT/3.5 + 100), black, 40)
+        
+        textoid(str(scores[1][1]), int(SCREEN_WIDTH/2 - 200), int(SCREEN_HEIGHT/3.5 + 200), black, 40)
+        textoid('-', int(SCREEN_WIDTH/2), int(SCREEN_HEIGHT/3.5 + 200), black, 80)
+        textoid(str(scores[1][0]), int(SCREEN_WIDTH/2 + 200), int(SCREEN_HEIGHT/3.5 + 200), black, 40)
+        
+        textoid(str(scores[2][1]), int(SCREEN_WIDTH/2 - 200), int(SCREEN_HEIGHT/3.5 + 300), black, 40)
+        textoid('-', int(SCREEN_WIDTH/2), int(SCREEN_HEIGHT/3.5 + 300), black, 80)
+        textoid(str(scores[2][0]), int(SCREEN_WIDTH/2 + 200), int(SCREEN_HEIGHT/3.5 + 300), black, 40)
+        
+        #Menu button
+        button("<-- Back to Menu", 0, 0, 300, 50, orange, orangeLight, greyLight, game_intro) 
+        
+        pygame.display.update()
+        
+        
+    
+"""Tutorial"""
+def tutorial():
+    
+    tutorial = True
+    
+    while tutorial:
+        for event in pygame.event.get():
+            if event.type ==  pygame.QUIT:
+                pygame.quit()
+                quit()
+    
+        screen.fill(white)
+        
+        #Menu button
+        button("<-- Back to Menu", 0, 0, 300, 50, orange, orangeLight, greyLight, game_intro) 
+    
+        #title
+        textoid('Tutorial', SCREEN_WIDTH/2, SCREEN_HEIGHT/6, black, 80)
+    
+        #Text
+        textoid('Arrow Keys to move around', SCREEN_WIDTH/2, 300, black, 30)
+        textoid('Press "A" to become solid', SCREEN_WIDTH/2, 350, black, 30)
+        textoid('Press "S" to become Gas', SCREEN_WIDTH/2, 400, black, 30)
+        textoid('Press "D" to become Liquid', SCREEN_WIDTH/2, 450, black, 30)
+        textoid('Solid can touch green platforms but not blue', SCREEN_WIDTH/2, 525, black, 30)
+        textoid('Gas cannnot move horizontally but floats upwards', SCREEN_WIDTH/2, 575, black, 30)
+        textoid('Liquid can touch blue platforms but not green', SCREEN_WIDTH/2, 625, black, 30)
+        textoid('The finish of a level is the purple line', SCREEN_WIDTH/2, 700, black, 30)
+        textoid('Make sure not to touch the bottom OR the top of the screen', SCREEN_WIDTH/2, 750, black, 30)
+        
+        
+        
+        
+        
+        
+        pygame.display.update()
+        
+"""Pause"""
+
+def quitgame():
+    pygame.quit()
+    quit()
+
+def unpause():
+     global pause
+     pause = False
+
+def paused():
+    global pause
+    textoid('Paused', SCREEN_WIDTH/2, SCREEN_HEIGHT/6, greenLight, 150)
+    
+    while pause:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+                
+        #screen.fill(white)
+        
+        button("Unpause", (SCREEN_WIDTH/2 - 150), 300, 300, 50, green, greenLight, greyLight, unpause)
+        button("Menu", (SCREEN_WIDTH/2 - 150), 400, 300, 50, orange, orangeLight, greyLight, game_intro)
+        button("Quit", (SCREEN_WIDTH/2 - 150), 500, 300, 50, purple, purpleLight, greyLight, quitgame)
+        
+        pygame.display.update()
+
+"""main loop"""
+def main () :
+    #which global variables the function is referencing
+    global pressed_right
+    global pressed_left
+    global ressed_down
+    global pressed_up
+    
+    global player
+    global player_faceleft
+    global player_faceright
+    global current_state
+    
+    
+    pygame.init()
+    
+    game_running = False
+
+    while game_running == False :
+        pygame.init()
+        
+        """run key press detection"""
+        pressed_keys(pygame)
+        
+        if pressed_left:
+            go_left()
+            #player = player_faceleft
+        if pressed_right:
+            go_right()
+            #player = player_faceright
+        if pressed_up:
+            go_up()
+        if pressed_down:
+            go_down()
+        
+        
+        """main loop"""
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                game_running = True
+                pygame.quit()
+                quit()
+ 
+
+            
+            #closing game through escape key
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    print('You hit escape')
+                    print('That quits the game')
+                    game_running = True
+        
+        
+        #fill screen background
+        screen.fill(white)
+        
+        #render player
+        render_player(pygame, screen)
+        
+        #update screen
+        pygame.display.flip()
+        
+        #update screen rate
+        fpsClock.tick(FPS)
+        
+game_intro()
